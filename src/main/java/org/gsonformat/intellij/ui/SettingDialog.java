@@ -51,11 +51,13 @@ public class SettingDialog extends JFrame {
         this.setAlwaysOnTop(true);
         setTitle("Setting");
         okButton.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onOK();
             }
         });
         cancelButton.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onCancel();
             }
@@ -67,6 +69,7 @@ public class SettingDialog extends JFrame {
             }
         });
         contentPane.registerKeyboardAction(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onCancel();
             }

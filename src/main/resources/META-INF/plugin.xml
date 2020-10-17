@@ -1,4 +1,4 @@
-<idea-plugin version="2">
+<idea-plugin>
     <name>GsonFormat</name>
     <description><![CDATA[
 <html>quickly to convert a JSON string to an InnerClassEntity class ..<br>
@@ -6,9 +6,14 @@
       </html>
       ]]>
     </description>
-    <version>1.5.0</version>
+    <version>1.6.0</version>
     <vendor email="wyh405003836@126.com">zzz40500</vendor>
-    <idea-version since-build="107.121"/>
+
+    <depends>com.intellij.modules.platform</depends>
+    <!-- >=2019.2 并且在 gradle.properties 'platformPlugins = java'  -->
+    <depends>com.intellij.java</depends>
+
+    <idea-version since-build="201"/>
     <change-notes><![CDATA[
   <p>
   1.4.0
@@ -22,6 +27,10 @@
   <li>fix several bug </li>
   <li>fix unlock setting window size </li>
   </p>
+  1.6.0
+  <ul>
+  <li>support idea 2020</li>
+  </ul>
 ]]></change-notes>
     <actions>
         <action id="Gsonformat" class="org.gsonformat.intellij.MainAction" text="GsonFormat">

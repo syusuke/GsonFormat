@@ -50,6 +50,7 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
     private void initListener() {
 
         okButton.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 if (generateClassTF.isFocusOwner()) {
                     editTP.requestFocus(true);
@@ -59,6 +60,7 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
             }
         });
         formatBtn.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 String json = editTP.getText();
                 json = json.trim();
@@ -106,22 +108,26 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
             }
         });
         cancelButton.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onCancel();
             }
         });
         settingButton.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 openSettingDialog();
             }
         });
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
+            @Override
             public void windowClosing(WindowEvent e) {
                 onCancel();
             }
         });
         contentPane2.registerKeyboardAction(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onCancel();
             }
@@ -132,7 +138,9 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
 
         cardLayout = (CardLayout) generateClassP.getLayout();
         generateClassTF.setBackground(errorLB.getBackground());
-        currentClass = ((PsiJavaFileImpl) file).getPackageName() + "." + file.getName().split("\\.")[0];
+
+        currentClass = this.cls.getQualifiedName();
+        // currentClass = ((PsiJavaFileImpl) file).getPackageName() + "." + file.getName().split("\\.")[0];
         generateClassLB.setText(currentClass);
         generateClassTF.setText(currentClass);
         generateClassTF.addFocusListener(new FocusListener() {
@@ -189,6 +197,7 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
         new ConvertBridge(this, jsonSTR, file, project, generateClass,
                 cls, generateClassName).run();
     }
+
     private void onCancel() {
         dispose();
     }
@@ -224,10 +233,12 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
     }
 
 
+    @Override
     public void cleanErrorInfo() {
         errorInfo = null;
     }
 
+    @Override
     public void setErrorInfo(String error) {
         errorInfo = error;
     }

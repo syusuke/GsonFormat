@@ -67,13 +67,6 @@ public class DataWriter extends WriteCommandAction.Simple {
         });
     }
 
-    @NotNull
-    @Override
-    @Deprecated()
-    public RunResult execute() {
-        return super.execute();
-    }
-
     @Override
     protected void run() {
         if (targetClass == null) {

@@ -18,6 +18,7 @@ public class ErrorDialog extends JFrame {
         this.setAlwaysOnTop(true);
         editTP.setText(errorInfo);
         okButton.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 dispose();
             }

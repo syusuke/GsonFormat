@@ -25,11 +25,13 @@ public class EditDialog extends JFrame {
         this.setAlwaysOnTop(true);
         getRootPane().setDefaultButton(okButton);
         okButton.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onOK();
             }
         });
         cancelButton.addActionListener(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onCancel();
             }
@@ -41,6 +43,7 @@ public class EditDialog extends JFrame {
             }
         });
         contentPane.registerKeyboardAction(new ActionListener() {
+            @Override
             public void actionPerformed(ActionEvent e) {
                 onCancel();
             }
@@ -63,6 +66,8 @@ public class EditDialog extends JFrame {
             case ARRAY_FROM_DATA1:
                 titleName = "arrayFromData(Object data,String key)";
                 editStr = Config.getInstant().getArrayFromData1Str();
+                break;
+            default:
                 break;
         }
         titleLB.setText(titleName);

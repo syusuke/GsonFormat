@@ -1,10 +1,11 @@
 buildscript {
     repositories {
+        mavenLocal()
         maven { url 'http://dl.bintray.com/jetbrains/intellij-plugin-service' }
     }
 }
 plugins {
-    id "org.jetbrains.intellij" version "0.1.10"
+    id "org.jetbrains.intellij" version "0.4.14"
 }
 
 apply plugin: 'org.jetbrains.intellij'
@@ -23,10 +24,10 @@ sourceSets {
     }
 }
 intellij {
-    version 'IC-2016.2.5'
+    version 'IC-2020.2.3'
     pluginName 'GsonFormat'
     updateSinceUntilBuild false
-
+    plugins = ['java']
 //    publish {
 //        pluginId '7910'
 //        username publishUsername
