@@ -38,5 +38,12 @@
             <keyboard-shortcut keymap="$default" first-keystroke="alt s"/>
         </action>
     </actions>
-    <extensions defaultExtensionNs="com.intellij"/>
+    <extensions defaultExtensionNs="com.intellij">
+        <applicationService serviceImplementation="org.gsonformat.intellij.services.MyApplicationService"/>
+        <projectService serviceImplementation="org.gsonformat.intellij.services.MyProjectService"/>
+    </extensions>
+    <applicationListeners>
+        <listener class="org.gsonformat.intellij.listeners.MyProjectManagerListener"
+                  topic="com.intellij.openapi.project.ProjectManagerListener"/>
+    </applicationListeners>
 </idea-plugin>

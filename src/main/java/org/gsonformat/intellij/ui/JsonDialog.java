@@ -4,11 +4,11 @@ import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.MessageType;
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiFile;
-import com.intellij.psi.impl.source.PsiJavaFileImpl;
 import org.apache.http.util.TextUtils;
 import org.gsonformat.intellij.ConvertBridge;
 import org.gsonformat.intellij.common.PsiClassUtil;
 import org.gsonformat.intellij.config.Config;
+import org.gsonformat.intellij.util.StringUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
 
@@ -18,7 +18,6 @@ import java.awt.event.*;
 
 public class JsonDialog extends JFrame implements ConvertBridge.Operator {
 
-    private CardLayout cardLayout;
     private JPanel contentPane2;
     private JButton okButton;
     private JButton cancelButton;
@@ -29,20 +28,25 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
     private JTextField generateClassTF;
     private JPanel generateClassP;
     private JButton formatBtn;
+    private JRadioButton setterGetterRadioButton;
+    private JRadioButton lombokRadioButton;
     private PsiClass cls;
     private PsiFile file;
     private Project project;
     private String errorInfo = null;
     private String currentClass = null;
+    public static final String PLUGIN_NAME = "GsonFormat";
+
 
     public JsonDialog(PsiClass cls, PsiFile file, Project project) throws HeadlessException {
         this.cls = cls;
         this.file = file;
         this.project = project;
         setContentPane(contentPane2);
-        setTitle("GsonFormat");
+        setTitle(PLUGIN_NAME);
         getRootPane().setDefaultButton(okButton);
         this.setAlwaysOnTop(true);
+
         initGeneratePanel(file);
         initListener();
     }
@@ -52,10 +56,11 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
         okButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent e) {
-                if (generateClassTF.isFocusOwner()) {
-                    editTP.requestFocus(true);
+                String jsonStr = editTP.getText().trim();
+                if (TextUtils.isEmpty(jsonStr)) {
+                    editTP.requestFocusInWindow();
                 } else {
-                    onOK();
+                    onOK(jsonStr);
                 }
             }
         });
@@ -135,67 +140,89 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
     }
 
     private void initGeneratePanel(PsiFile file) {
+        this.generateClassEditable(false);
 
-        cardLayout = (CardLayout) generateClassP.getLayout();
         generateClassTF.setBackground(errorLB.getBackground());
 
         currentClass = this.cls.getQualifiedName();
         // currentClass = ((PsiJavaFileImpl) file).getPackageName() + "." + file.getName().split("\\.")[0];
-        generateClassLB.setText(currentClass);
+        generateClassTF.setFocusable(true);
         generateClassTF.setText(currentClass);
+        generateClassLB.setText(currentClass);
+
         generateClassTF.addFocusListener(new FocusListener() {
             @Override
-            public void focusGained(FocusEvent focusEvent) {
+            public void focusGained(FocusEvent e) {
             }
 
             @Override
-            public void focusLost(FocusEvent focusEvent) {
-                cardLayout.next(generateClassP);
-                if (TextUtils.isEmpty(generateClassTF.getText())) {
-                    generateClassLB.setText(currentClass);
-                    generateClassTF.setText(currentClass);
+            public void focusLost(FocusEvent e) {
+                String generateClassName = generateClassTF.getText().trim();
+                if (!StringUtil.validateJavaIdentifier(generateClassName)) {
+                    Toast.make(project, generateClassP, MessageType.ERROR, "Invalid class name");
+                    generateClassTF.requestFocusInWindow();
                 } else {
-                    generateClassLB.setText(generateClassTF.getText());
+                    generateClassTF.setText(generateClassName);
+                    generateClassEditable(false);
+                    generateClassEditable(false);
+                    generateClassLB.setText(generateClassName);
                 }
             }
         });
-
         generateClassLB.addMouseListener(new MouseAdapter() {
             @Override
             public void mouseClicked(MouseEvent mouseEvent) {
                 super.mouseClicked(mouseEvent);
-                cardLayout.next(generateClassP);
-                if (generateClassLB.getText().equals(currentClass) && !TextUtils.isEmpty(Config.getInstant().getEntityPackName()) && !Config.getInstant().getEntityPackName().equals("null")) {
-                    generateClassLB.setText(Config.getInstant().getEntityPackName());
-                    generateClassTF.setText(Config.getInstant().getEntityPackName());
+                String entityPackName = Config.getInstant().getEntityPackName();
+                if (generateClassLB.getText().equals(currentClass) &&
+                        !TextUtils.isEmpty(entityPackName)
+                        && !"null".equals(entityPackName)) {
+                    generateClassLB.setText(entityPackName);
+                    generateClassTF.setText(entityPackName);
                 }
-                generateClassTF.requestFocus(true);
+                generateClassEditable(true);
+
+                // edit 获取到焦点
+                generateClassTF.requestFocusInWindow();
             }
 
         });
     }
 
-    private void onOK() {
 
-        this.setAlwaysOnTop(false);
-        String jsonSTR = editTP.getText().trim();
-        if (TextUtils.isEmpty(jsonSTR)) {
-            return;
+    private void generateClassEditable(boolean editable) {
+        generateClassLB.setEnabled(!editable);
+        generateClassLB.setVisible(!editable);
+
+        generateClassTF.setEnabled(editable);
+        generateClassTF.setVisible(editable);
+    }
+
+    private void onOK() {
+        String jsonStr = editTP.getText().trim();
+        if (TextUtils.isEmpty(jsonStr)) {
+            editTP.requestFocusInWindow();
+        } else {
+            onOK(jsonStr);
         }
+    }
+
+    private void onOK(String jsonStr) {
+        this.setAlwaysOnTop(false);
+
         String generateClassName = generateClassTF.getText().replaceAll(" ", "").replaceAll(".java$", "");
         if (TextUtils.isEmpty(generateClassName) || generateClassName.endsWith(".")) {
             Toast.make(project, generateClassP, MessageType.ERROR, "the path is not allowed");
             return;
         }
-        PsiClass generateClass = null;
-        if (!currentClass.equals(generateClassName)) {
-            generateClass = PsiClassUtil.exist(file, generateClassTF.getText());
-        } else {
+        PsiClass generateClass;
+        if (currentClass.equals(generateClassName)) {
             generateClass = cls;
+        } else {
+            generateClass = PsiClassUtil.exist(file, generateClassName);
         }
 
-        new ConvertBridge(this, jsonSTR, file, project, generateClass,
-                cls, generateClassName).run();
+        new ConvertBridge(this, jsonStr, file, project, generateClass, cls, generateClassName).run();
     }
 
     private void onCancel() {
@@ -203,7 +230,7 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
     }
 
 
-    public PsiClass getClss() {
+    public PsiClass getPsiClass() {
         return cls;
     }
 
@@ -260,6 +287,8 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
                 break;
             case PATH_ERROR:
                 Toast.make(project, generateClassP, MessageType.ERROR, "the path is not allowed");
+                break;
+            default:
                 break;
         }
     }

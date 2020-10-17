@@ -90,12 +90,12 @@ public class Config {
             config.setAnnotationStr(PropertiesComponent.getInstance().getValue("annotationStr", Constant.gsonAnnotation));
             config.setEntityPackName(PropertiesComponent.getInstance().getValue("entityPackName"));
             config.setFiledNamePreFixStr(PropertiesComponent.getInstance().getValue("filedNamePreFixStr"));
-            config.setErrorCount(PropertiesComponent.getInstance().getOrInitInt("errorCount", 0));
-            config.setVirgoMode(PropertiesComponent.getInstance().getBoolean("virgoMode", true));
+            config.setErrorCount(PropertiesComponent.getInstance().getInt("errorCount", 0));
+            config.setVirgoMode(PropertiesComponent.getInstance().getBoolean("virgoMode", false));
             config.setUseFieldNamePrefix(PropertiesComponent.getInstance().getBoolean("useFieldNamePrefix", false));
             config.setGenerateComments(PropertiesComponent.getInstance().getBoolean("generateComments", true));
             config.setSplitGenerate(PropertiesComponent.getInstance().getBoolean("splitGenerate", false));
-            config.setUseWrapperClass(PropertiesComponent.getInstance().getBoolean("useWrapperClass", false));
+            config.setUseWrapperClass(PropertiesComponent.getInstance().getBoolean("useWrapperClass", true));
 
         }
         return config;
@@ -315,7 +315,7 @@ public class Config {
         if (entityPackName == null) {
             return;
         }
-        setEntityPackName(entityPackName+".");
+        setEntityPackName(entityPackName + ".");
         save();
     }
 

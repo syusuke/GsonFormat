@@ -24,7 +24,7 @@ public class Toast {
      */
     public static void make(Project project, JComponent jComponent, MessageType type, String text) {
 
-        StatusBar statusBar = WindowManager.getInstance().getStatusBar(project);
+        /// StatusBar statusBar = WindowManager.getInstance().getStatusBar(project);
 
         JBPopupFactory.getInstance()
                 .createHtmlTextBalloonBuilder(text, type, null)

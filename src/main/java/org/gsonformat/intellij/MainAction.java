@@ -25,15 +25,15 @@ public class MainAction extends AnAction {
             // not null
             return;
         }
-        PsiFile mFile = PsiUtilBase.getPsiFileInEditor(editor, project);
-        PsiClass psiClass = getTargetClass(project, editor);
+
+        PsiFile currentEditPsiFile = PsiUtilBase.getPsiFileInEditor(editor, project);
+        // 当前光标所在位置
+        int offset = editor.getCaretModel().getOffset();
+        PsiClass psiClass = getTargetClass(currentEditPsiFile, offset);
         if (psiClass == null) {
             return;
         }
-        JsonDialog jsonD = new JsonDialog(psiClass, mFile, project);
-        jsonD.setClass(psiClass);
-        jsonD.setFile(mFile);
-        jsonD.setProject(project);
+        JsonDialog jsonD = new JsonDialog(psiClass, currentEditPsiFile, project);
         jsonD.setSize(600, 400);
         jsonD.setLocationRelativeTo(null);
         jsonD.setVisible(true);
@@ -42,15 +42,12 @@ public class MainAction extends AnAction {
     /**
      * 获取文件所在的类
      *
-     * @param project
-     * @param editor
+     * @param psiFile
+     * @param offset
      * @return
      */
-    public PsiClass getTargetClass(Project project, Editor editor) {
-        // 当前光标所在位置
-        int offset = editor.getCaretModel().getOffset();
+    public PsiClass getTargetClass(PsiFile psiFile, int offset) {
 
-        PsiFile psiFile = PsiUtilBase.getPsiFileInEditor(editor, project);
         if (psiFile instanceof PsiJavaFile) {
             // java file
             PsiJavaFile psiJavaFile = (PsiJavaFile) psiFile;

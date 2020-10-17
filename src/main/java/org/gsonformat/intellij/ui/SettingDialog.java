@@ -40,7 +40,6 @@ public class SettingDialog extends JFrame {
     private JRadioButton loganSquareCB;
     private JRadioButton autoValueRadioButton;
     private JCheckBox splitGenerateMode;
-    private JRadioButton lombokRB;
     private String annotaionStr;
     private JCheckBox useWrapperClassCB;
 
@@ -64,6 +63,7 @@ public class SettingDialog extends JFrame {
         });
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
+            @Override
             public void windowClosing(WindowEvent e) {
                 onCancel();
             }
@@ -169,28 +169,7 @@ public class SettingDialog extends JFrame {
                 array1Button.setEnabled(false);
             }
         });
-        lombokRB.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                if (lombokRB.isSelected()) {
-                    annotationFT.setText(Constant.lombokAnnotation);
-                }
-                annotationFT.setEnabled(otherRB.isSelected());
-                objectFromDataCB.setEnabled(false);
-                objectFromData1CB.setEnabled(false);
-                arrayFromDataCB.setEnabled(false);
-                arrayFromData1CB.setEnabled(false);
-                objectFromDataCB.setSelected(false);
-                objectFromData1CB.setSelected(false);
-                arrayFromDataCB.setSelected(false);
-                arrayFromData1CB.setSelected(false);
-                objectButton.setEnabled(false);
-                object1Button.setEnabled(false);
-                arrayButton.setEnabled(false);
-                array1Button.setEnabled(false);
-            }
-        });
-        String filedPrefix = null;
+        String filedPrefix;
         filedPrefix = Config.getInstant().getFiledNamePreFixStr();
         if (TextUtils.isEmpty(filedPrefix)) {
             JavaCodeStyleManager styleManager = JavaCodeStyleManager.getInstance(project);
