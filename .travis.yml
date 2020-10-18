@@ -10,7 +10,7 @@ deploy:
   provider: releases
   api_key:
     secure: CF5kBAM1HR6AzGAF9hVCvoRz+n88hh+m61eKoGHaXhG6iSO9SJrQw5iKDp3DHrIVVkiyfzWYWypv/C06eD185B4ThwBQfykbHNdrDQCw7CWQMxpZhesn+BUHY1PszHolPH1N3xtgD26RMlZxMJeWt/Qqhx0J4uLl7urCx35CITm87Xp2njV+iXfNIyf+pOS/jInhHAXSHzQcCsaaIF4bMqrzZs730N+kbWrbYFsRn1sxw5rNN0DKsRMb4tiQ6AevYFvW90rjeZdUtt5DBeAyUKw7kTmPz6tzamKWgFTF/E8Ugm2kR7ZAIEzdK2fscMEkr5623w87RsEHihPjKwVhZ6wePfqSuhTFTamZEUgmciwt8ppT2phfRLW5WWJskb5pxokU3cvXN6ZVbUKlOEbEQBzfp8KlEwxl+w8YE67NK+a422gAITwWi1gk3U6c0VZfAOaeqlQGxSPXoapgoNWVvOpa7aw58xbk5vPxHdYvX27aLG8o73w01CPefzj6YxkJPLoeYPxZv/sPj8IX47BOnX9pfl3tLxYFKWMrJJKdVCxKEKwSGXKhXz7zSHxvPYuBmFesyyiZ0l3GM8bE9J8vMB5yxM3TZnIYrcow/2mV3RNwaLT47Vm+QQ7eZxumcj8mLR+u6S2WLS/Jp1EKg2kpS0pAHADL/q60UppnzboQsqo=
-  file: ''
+  file: 'build/libs/GsonFormat.jar'
   on:
     #repo: syusuke/GsonFormat
     tags: true
