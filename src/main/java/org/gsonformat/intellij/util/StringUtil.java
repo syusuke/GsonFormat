@@ -24,4 +24,13 @@ public class StringUtil {
         }
         return JAVA_NAME_PATTERN.matcher(identifier).matches();
     }
+
+    public static String toClassName(String filename) {
+        int i = filename.lastIndexOf("/");
+
+        if (i == -1) {
+            return filename.substring(0, filename.length() - ".java".length());
+        }
+        return filename.substring(i, filename.length() - ".java".length());
+    }
 }

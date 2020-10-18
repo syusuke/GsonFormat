@@ -3,11 +3,14 @@ package org.gsonformat.intellij.ui;
 import com.intellij.openapi.project.Project;
 import com.intellij.openapi.ui.MessageType;
 import com.intellij.psi.PsiClass;
-import com.intellij.psi.PsiFile;
+import com.intellij.psi.PsiJavaFile;
 import org.apache.http.util.TextUtils;
 import org.gsonformat.intellij.ConvertBridge;
 import org.gsonformat.intellij.common.PsiClassUtil;
 import org.gsonformat.intellij.config.Config;
+import org.gsonformat.intellij.config.Constants;
+import org.gsonformat.intellij.config.EasyConfig;
+import org.gsonformat.intellij.config.ProjectConfig;
 import org.gsonformat.intellij.util.StringUtil;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -30,26 +33,76 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
     private JButton formatBtn;
     private JRadioButton setterGetterRadioButton;
     private JRadioButton lombokRadioButton;
-    private PsiClass cls;
-    private PsiFile file;
-    private Project project;
+    private final PsiClass currentEditorClass;
+    private final PsiJavaFile currentEditFile;
+    private final Project project;
+    private final String currentClass;
     private String errorInfo = null;
-    private String currentClass = null;
-    public static final String PLUGIN_NAME = "GsonFormat";
 
-
-    public JsonDialog(PsiClass cls, PsiFile file, Project project) throws HeadlessException {
-        this.cls = cls;
-        this.file = file;
+    public JsonDialog(PsiClass currentEditorClass, PsiJavaFile currentEditFile, Project project) throws HeadlessException {
+        this.currentEditorClass = currentEditorClass;
+        this.currentEditFile = currentEditFile;
         this.project = project;
+        this.currentClass = this.currentEditorClass.getQualifiedName();
+        // currentClass = ((PsiJavaFileImpl) file).getPackageName() + "." + file.getName().split("\\.")[0];
+
         setContentPane(contentPane2);
-        setTitle(PLUGIN_NAME);
+        setTitle(Constants.PLUGIN_NAME);
         getRootPane().setDefaultButton(okButton);
         this.setAlwaysOnTop(true);
 
-        initGeneratePanel(file);
+        initGeneratePanel(currentEditFile);
         initListener();
     }
+
+    private void initGeneratePanel(PsiJavaFile file) {
+        this.generateClassEditable(false);
+
+        generateClassTF.setBackground(errorLB.getBackground());
+
+        generateClassTF.setFocusable(true);
+        generateClassTF.setText(currentClass);
+        generateClassLB.setText(currentClass);
+
+        generateClassTF.addFocusListener(new FocusListener() {
+            @Override
+            public void focusGained(FocusEvent e) {
+            }
+
+            @Override
+            public void focusLost(FocusEvent e) {
+                String generateClassName = generateClassTF.getText().trim();
+                if (!StringUtil.validateJavaIdentifier(generateClassName)) {
+                    Toast.make(project, generateClassP, MessageType.ERROR, "Invalid class name");
+                    generateClassTF.requestFocusInWindow();
+                } else {
+                    generateClassTF.setText(generateClassName);
+                    generateClassEditable(false);
+                    generateClassEditable(false);
+                    generateClassLB.setText(generateClassName);
+                }
+            }
+        });
+        generateClassLB.addMouseListener(new MouseAdapter() {
+            @Override
+            public void mouseClicked(MouseEvent mouseEvent) {
+                super.mouseClicked(mouseEvent);
+                String entityPackName = EasyConfig.getKeyEntityPackName(project);
+                if (generateClassLB.getText().equals(currentClass) &&
+                        !TextUtils.isEmpty(entityPackName)
+                        && !"null".equals(entityPackName)) {
+                    generateClassLB.setText(entityPackName);
+                    generateClassTF.setText(entityPackName);
+                }
+                generateClassEditable(true);
+
+                // edit 获取到焦点
+                generateClassTF.requestFocusInWindow();
+            }
+
+        });
+    }
+
 
     private void initListener() {
 
@@ -60,7 +113,7 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
                 if (TextUtils.isEmpty(jsonStr)) {
                     editTP.requestFocusInWindow();
                 } else {
-                    onOK(jsonStr);
+                    onOk(jsonStr);
                 }
             }
         });
@@ -86,7 +139,7 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
             public void keyReleased(KeyEvent keyEvent) {
                 super.keyReleased(keyEvent);
                 if (keyEvent.getKeyCode() == KeyEvent.VK_ENTER) {
-                    onOK();
+                    onOk();
                 }
             }
         });
@@ -139,56 +192,6 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
         }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
     }
 
-    private void initGeneratePanel(PsiFile file) {
-        this.generateClassEditable(false);
-
-        generateClassTF.setBackground(errorLB.getBackground());
-
-        currentClass = this.cls.getQualifiedName();
-        // currentClass = ((PsiJavaFileImpl) file).getPackageName() + "." + file.getName().split("\\.")[0];
-        generateClassTF.setFocusable(true);
-        generateClassTF.setText(currentClass);
-        generateClassLB.setText(currentClass);
-
-        generateClassTF.addFocusListener(new FocusListener() {
-            @Override
-            public void focusGained(FocusEvent e) {
-            }
-
-            @Override
-            public void focusLost(FocusEvent e) {
-                String generateClassName = generateClassTF.getText().trim();
-                if (!StringUtil.validateJavaIdentifier(generateClassName)) {
-                    Toast.make(project, generateClassP, MessageType.ERROR, "Invalid class name");
-                    generateClassTF.requestFocusInWindow();
-                } else {
-                    generateClassTF.setText(generateClassName);
-                    generateClassEditable(false);
-                    generateClassEditable(false);
-                    generateClassLB.setText(generateClassName);
-                }
-            }
-        });
-        generateClassLB.addMouseListener(new MouseAdapter() {
-            @Override
-            public void mouseClicked(MouseEvent mouseEvent) {
-                super.mouseClicked(mouseEvent);
-                String entityPackName = Config.getInstant().getEntityPackName();
-                if (generateClassLB.getText().equals(currentClass) &&
-                        !TextUtils.isEmpty(entityPackName)
-                        && !"null".equals(entityPackName)) {
-                    generateClassLB.setText(entityPackName);
-                    generateClassTF.setText(entityPackName);
-                }
-                generateClassEditable(true);
-
-                // edit 获取到焦点
-                generateClassTF.requestFocusInWindow();
-            }
-
-        });
-    }
-
 
     private void generateClassEditable(boolean editable) {
         generateClassLB.setEnabled(!editable);
@@ -198,16 +201,16 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
         generateClassTF.setVisible(editable);
     }
 
-    private void onOK() {
+    private void onOk() {
         String jsonStr = editTP.getText().trim();
         if (TextUtils.isEmpty(jsonStr)) {
             editTP.requestFocusInWindow();
         } else {
-            onOK(jsonStr);
+            onOk(jsonStr);
         }
     }
 
-    private void onOK(String jsonStr) {
+    private void onOk(String jsonStr) {
         this.setAlwaysOnTop(false);
 
         String generateClassName = generateClassTF.getText().replaceAll(" ", "").replaceAll(".java$", "");
@@ -217,12 +220,13 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
         }
         PsiClass generateClass;
         if (currentClass.equals(generateClassName)) {
-            generateClass = cls;
+            // 在当前文件生成Bean
+            generateClass = currentEditorClass;
         } else {
-            generateClass = PsiClassUtil.exist(file, generateClassName);
+            // 非当前editor下的文件
+            generateClass = PsiClassUtil.exist(currentEditFile, generateClassName);
         }
-
-        new ConvertBridge(this, jsonStr, file, project, generateClass, cls, generateClassName).run();
+        new ConvertBridge(this, jsonStr, currentEditFile, project, generateClass, currentEditorClass, generateClassName).run();
     }
 
     private void onCancel() {
@@ -231,20 +235,9 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
 
 
     public PsiClass getPsiClass() {
-        return cls;
+        return currentEditorClass;
     }
 
-    public void setClass(PsiClass mClass) {
-        this.cls = mClass;
-    }
-
-    public void setProject(Project mProject) {
-        this.project = mProject;
-    }
-
-    public void setFile(PsiFile mFile) {
-        this.file = mFile;
-    }
 
     private void createUIComponents() {
 
@@ -255,7 +248,7 @@ public class JsonDialog extends JFrame implements ConvertBridge.Operator {
         SettingDialog settingDialog = new SettingDialog(project);
         settingDialog.setSize(800, 720);
         settingDialog.setLocationRelativeTo(null);
-//        settingDialog.setResizable(false);
+        //settingDialog.setResizable(false);
         settingDialog.setVisible(true);
     }
 

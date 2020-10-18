@@ -8,13 +8,19 @@ import org.gsonformat.intellij.config.Config;
 import org.gsonformat.intellij.config.Constant;
 import org.gsonformat.intellij.entity.ClassEntity;
 import org.gsonformat.intellij.entity.FieldEntity;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.regex.Pattern;
 
 /**
  * Created by dim on 16/11/7.
  */
+
+@Deprecated
 public class LombokProcessor extends Processor {
+
+    private static final Pattern NO_ARGS_CONSTRUCTOR = Pattern.compile("@.*?NoArgsConstructor");
+    private static final Pattern DATA_PATTERN = Pattern.compile("@.*?Data");
 
     @Override
     protected void onStarProcess(ClassEntity classEntity, PsiElementFactory factory, PsiClass cls, IProcessor visitor) {
@@ -29,13 +35,11 @@ public class LombokProcessor extends Processor {
         PsiModifierList modifierList = generateClass.getModifierList();
         if (modifierList != null) {
             PsiElement firstChild = modifierList.getFirstChild();
-            Pattern pattern = Pattern.compile("@.*?NoArgsConstructor");
-            if (firstChild != null && !pattern.matcher(firstChild.getText()).find()) {
+            if (firstChild != null && !NO_ARGS_CONSTRUCTOR.matcher(firstChild.getText()).find()) {
                 PsiAnnotation annotationFromText = factory.createAnnotationFromText("@lombok.NoArgsConstructor", generateClass);
                 modifierList.addBefore(annotationFromText, firstChild);
             }
-            Pattern pattern2 = Pattern.compile("@.*?Data");
-            if (firstChild != null && !pattern2.matcher(firstChild.getText()).find()) {
+            if (firstChild != null && !DATA_PATTERN.matcher(firstChild.getText()).find()) {
                 PsiAnnotation annotationFromText = factory.createAnnotationFromText("@lombok.Data", generateClass);
                 modifierList.addBefore(annotationFromText, firstChild);
             }
@@ -48,7 +52,7 @@ public class LombokProcessor extends Processor {
             Try.run(new Try.TryListener() {
                 @Override
                 public void run() {
-                    cls.add(factory.createFieldFromText(generateLombokFieldText(classEntity, fieldEntity,null), cls));
+                    cls.add(factory.createFieldFromText(generateLombokFieldText(classEntity, fieldEntity, null), cls));
                 }
 
                 @Override
@@ -63,6 +67,12 @@ public class LombokProcessor extends Processor {
                 }
             });
         }
+    }
+
+    @NotNull
+    @Override
+    protected String getFullNameAnnotation() {
+        return "";
     }
 
     @Override
@@ -88,7 +98,7 @@ public class LombokProcessor extends Processor {
             fieldEntity.getTargetClass().setGenerate(true);
         }
 
-        if (Config.getInstant().isFieldPrivateMode()) {
+        if (config.isFieldPrivateMode()) {
             fieldSb.append("private  ").append(fieldEntity.getFullNameType()).append(" ").append(filedName).append(" ; ");
         } else {
             fieldSb.append("public  ").append(fieldEntity.getFullNameType()).append(" ").append(filedName).append(" ; ");

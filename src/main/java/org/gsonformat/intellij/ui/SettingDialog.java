@@ -4,8 +4,8 @@ import com.intellij.openapi.project.Project;
 import com.intellij.psi.codeStyle.JavaCodeStyleManager;
 import com.intellij.psi.codeStyle.VariableKind;
 import org.apache.http.util.TextUtils;
-import org.gsonformat.intellij.config.Config;
-import org.gsonformat.intellij.config.Constant;
+import org.gsonformat.intellij.config.ProjectConfig;
+import org.gsonformat.intellij.entity.ConvertLibrary;
 
 import javax.swing.*;
 import java.awt.event.*;
@@ -29,7 +29,6 @@ public class SettingDialog extends JFrame {
     private JButton cancelButton;
     private JButton okButton;
     private JTextField filedPrefixTF;
-    private JCheckBox filedPrefixCB;
     private JRadioButton gsonJRB;
     private JRadioButton jackRB;
     private JRadioButton fastJsonRB;
@@ -40,27 +39,26 @@ public class SettingDialog extends JFrame {
     private JRadioButton loganSquareCB;
     private JRadioButton autoValueRadioButton;
     private JCheckBox splitGenerateMode;
-    private String annotaionStr;
+    private String annotationStr;
     private JCheckBox useWrapperClassCB;
+    private JLabel filedPrefixLB;
+    private JCheckBox useSetAndGetCB;
+    private JCheckBox useLombokCB;
+    private JRadioButton noneJRB;
+
+    private Project project;
+    private ConvertLibrary convertType;
+
 
     public SettingDialog(Project project) {
+        this.project = project;
         setContentPane(contentPane);
 //        setModal(true);
         getRootPane().setDefaultButton(okButton);
         this.setAlwaysOnTop(true);
-        setTitle("Setting");
-        okButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                onOK();
-            }
-        });
-        cancelButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                onCancel();
-            }
-        });
+        setTitle("Settings");
+        okButton.addActionListener(e -> onOk());
+        cancelButton.addActionListener(e -> onCancel());
         setDefaultCloseOperation(DO_NOTHING_ON_CLOSE);
         addWindowListener(new WindowAdapter() {
             @Override
@@ -68,203 +66,174 @@ public class SettingDialog extends JFrame {
                 onCancel();
             }
         });
-        contentPane.registerKeyboardAction(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                onCancel();
-            }
-        }, KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
+        contentPane.registerKeyboardAction(e -> onCancel(), KeyStroke.getKeyStroke(KeyEvent.VK_ESCAPE, 0), JComponent.WHEN_ANCESTOR_OF_FOCUSED_COMPONENT);
 
-        if (Config.getInstant().isFieldPrivateMode()) {
-            fieldPrivateRadioButton.setSelected(true);
-        } else {
-            fieldPublicRadioButton.setSelected(true);
-        }
+        ProjectConfig projectConfig = ProjectConfig.getConfig(project);
 
-        virgoModelCB.setSelected(Config.getInstant().isVirgoMode());
-        generateCommentsCT.setSelected(Config.getInstant().isGenerateComments());
-        filedPrefixCB.setSelected(Config.getInstant().isUseFieldNamePrefix());
-        filedPrefixTF.setEnabled(Config.getInstant().isUseFieldNamePrefix());
-        useSerializedNameCheckBox.setSelected(Config.getInstant().isUseSerializedName());
-        objectFromDataCB.setSelected(Config.getInstant().isObjectFromData());
-        objectFromData1CB.setSelected(Config.getInstant().isObjectFromData1());
-        arrayFromDataCB.setSelected(Config.getInstant().isArrayFromData());
-        arrayFromData1CB.setSelected(Config.getInstant().isArrayFromData1());
-        reuseEntityCB.setSelected(Config.getInstant().isReuseEntity());
+        initProjectConfig(projectConfig);
+
+        initUiStatus();
+
+        convertTypeListener();
+        formDataListener();
+        fromDataButtonListener();
+    }
+
+    private void initProjectConfig(ProjectConfig projectConfig) {
+
         objectButton.setEnabled(objectFromDataCB.isSelected());
         object1Button.setEnabled(objectFromData1CB.isSelected());
         arrayButton.setEnabled(arrayFromDataCB.isSelected());
         array1Button.setEnabled(arrayFromData1CB.isSelected());
-        suffixEdit.setText(Config.getInstant().getSuffixStr());
-        splitGenerateMode.setSelected(Config.getInstant().isSplitGenerate());
-        useWrapperClassCB.setSelected(Config.getInstant().isUseWrapperClass());
-        objectFromDataCB.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                objectButton.setEnabled(objectFromDataCB.isSelected());
-            }
-        });
-        objectFromData1CB.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                object1Button.setEnabled(objectFromData1CB.isSelected());
-            }
-        });
-        arrayFromDataCB.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                arrayButton.setEnabled(arrayFromDataCB.isSelected());
-            }
-        });
-        arrayFromData1CB.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                array1Button.setEnabled(arrayFromData1CB.isSelected());
-            }
-        });
-        filedPrefixCB.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                filedPrefixTF.setEnabled(filedPrefixCB.isSelected());
-            }
-        });
-        otherRB.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                annotationFT.setText("@{filed}");
-                annotationFT.setEnabled(otherRB.isSelected());
-                objectFromDataCB.setEnabled(false);
-                objectFromData1CB.setEnabled(false);
-                arrayFromDataCB.setEnabled(false);
-                arrayFromData1CB.setEnabled(false);
-                objectFromDataCB.setSelected(false);
-                objectFromData1CB.setSelected(false);
-                arrayFromDataCB.setSelected(false);
-                arrayFromData1CB.setSelected(false);
-                objectButton.setEnabled(false);
-                object1Button.setEnabled(false);
-                arrayButton.setEnabled(false);
-                array1Button.setEnabled(false);
 
-            }
-        });
-        loganSquareCB.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                if (loganSquareCB.isSelected()) {
-                    annotationFT.setText(Constant.loganSquareAnnotation);
-                }
-                annotationFT.setEnabled(otherRB.isSelected());
-                objectFromDataCB.setEnabled(false);
-                objectFromData1CB.setEnabled(false);
-                arrayFromDataCB.setEnabled(false);
-                arrayFromData1CB.setEnabled(false);
-                objectFromDataCB.setSelected(false);
-                objectFromData1CB.setSelected(false);
-                arrayFromDataCB.setSelected(false);
-                arrayFromData1CB.setSelected(false);
-                objectButton.setEnabled(false);
-                object1Button.setEnabled(false);
-                arrayButton.setEnabled(false);
-                array1Button.setEnabled(false);
-            }
-        });
-        String filedPrefix;
-        filedPrefix = Config.getInstant().getFiledNamePreFixStr();
-        if (TextUtils.isEmpty(filedPrefix)) {
+        virgoModelCB.setSelected(projectConfig.isVirgoMode());
+        generateCommentsCT.setSelected(projectConfig.isGenerateComments());
+        splitGenerateMode.setSelected(projectConfig.isSplitGenerate());
+        reuseEntityCB.setSelected(projectConfig.isReuseEntity());
+        fieldPrivateRadioButton.setSelected(projectConfig.isFieldPrivateMode());
+        useSerializedNameCheckBox.setSelected(projectConfig.isUseSerializedName());
+        useWrapperClassCB.setSelected(projectConfig.isUseWrapperClass());
+        useSetAndGetCB.setSelected(projectConfig.isUseSetAndGet());
+        useLombokCB.setSelected(projectConfig.isUseLombok());
+
+        suffixEdit.setText(projectConfig.getEntitySuffix());
+        String filedNamePrefix = projectConfig.getFiledNamePrefix();
+        //TODO
+        if (TextUtils.isEmpty(filedNamePrefix)) {
             JavaCodeStyleManager styleManager = JavaCodeStyleManager.getInstance(project);
-            filedPrefix = styleManager.getPrefixByVariableKind(VariableKind.FIELD
-            );
+            filedNamePrefix = styleManager.getPrefixByVariableKind(VariableKind.FIELD);
         }
-        filedPrefixTF.setText(filedPrefix);
-        gsonJRB.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                if (gsonJRB.isSelected()) {
-                    annotationFT.setText(Constant.gsonAnnotation);
-                }
-                objectFromDataCB.setEnabled(true);
-                objectFromData1CB.setEnabled(true);
-                arrayFromDataCB.setEnabled(true);
-                arrayFromData1CB.setEnabled(true);
-                annotationFT.setEnabled(false);
-            }
-        });
-        fastJsonRB.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
+        filedPrefixTF.setText(filedNamePrefix);
 
-                if (fastJsonRB.isSelected()) {
-                    annotationFT.setText(Constant.fastAnnotation);
-                }
-                objectFromDataCB.setEnabled(false);
-                objectFromData1CB.setEnabled(false);
-                arrayFromDataCB.setEnabled(false);
-                arrayFromData1CB.setEnabled(false);
-                annotationFT.setEnabled(false);
-                objectFromDataCB.setSelected(false);
-                objectFromData1CB.setSelected(false);
-                arrayFromDataCB.setSelected(false);
-                arrayFromData1CB.setSelected(false);
-                objectButton.setEnabled(false);
-                object1Button.setEnabled(false);
-                arrayButton.setEnabled(false);
-                array1Button.setEnabled(false);
-            }
-        });
-        jackRB.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent actionEvent) {
-                if (jackRB.isSelected()) {
-                    annotationFT.setText(Constant.jackAnnotation);
-                }
-                annotationFT.setEnabled(false);
-                objectFromDataCB.setEnabled(false);
-                objectFromData1CB.setEnabled(false);
-                arrayFromDataCB.setEnabled(false);
-                arrayFromData1CB.setEnabled(false);
-                annotationFT.setEnabled(false);
-                objectFromDataCB.setSelected(false);
-                objectFromData1CB.setSelected(false);
-                arrayFromDataCB.setSelected(false);
-                arrayFromData1CB.setSelected(false);
-                objectButton.setEnabled(false);
-                object1Button.setEnabled(false);
-                arrayButton.setEnabled(false);
-                array1Button.setEnabled(false);
-            }
-        });
-        autoValueRadioButton.addActionListener(new ActionListener() {
-            @Override
-            public void actionPerformed(ActionEvent e) {
-                if (autoValueRadioButton.isSelected()) {
-                    annotationFT.setText(Constant.autoValueAnnotation);
-                }
-            }
-        });
+        convertType = ConvertLibrary.fromName(projectConfig.getConvertType());
+        annotationStr = ConvertLibrary.getAnnotation(convertType);
+        if (convertType == ConvertLibrary.OTHER) {
+            annotationStr = projectConfig.getConvertOtherAnnotation();
+        }
+    }
 
 
-        annotaionStr = Config.getInstant().getAnnotationStr();
-        if (annotaionStr.equals(Constant.gsonAnnotation)) {
-            gsonJRB.setSelected(true);
+    private void initUiStatus() {
+        annotationFT.setText(annotationStr);
+
+        // 初始状态
+        switch (convertType) {
+            case NONE:
+                noneJRB.setSelected(true);
+                annotationFT.setEnabled(false);
+                enableFromData(false);
+                enableFromDataButton(false);
+                selectFromData(false);
+                break;
+            case GSON:
+                gsonJRB.setSelected(true);
+                annotationFT.setEnabled(false);
+                enableFromData(true);
+                enableFromDataButton(true);
+                selectFromData(false);
+                break;
+            case JACKSON:
+                jackRB.setSelected(true);
+                annotationFT.setEnabled(false);
+                enableFromData(false);
+                enableFromDataButton(false);
+                selectFromData(false);
+                break;
+            case FAST_JSON:
+                fastJsonRB.setSelected(true);
+                annotationFT.setEnabled(false);
+                enableFromData(false);
+                enableFromDataButton(false);
+                selectFromData(false);
+                break;
+            case AUTO_VALUE:
+                autoValueRadioButton.setSelected(true);
+                annotationFT.setEnabled(false);
+                enableFromData(false);
+                enableFromDataButton(false);
+                selectFromData(false);
+                break;
+            case LOGAN_SQUARE:
+                loganSquareCB.setSelected(true);
+                annotationFT.setEnabled(false);
+                enableFromData(false);
+                enableFromDataButton(false);
+                selectFromData(false);
+                break;
+            case OTHER:
+            default:
+                otherRB.setSelected(true);
+                annotationFT.setEnabled(true);
+                enableFromData(false);
+                enableFromDataButton(false);
+                selectFromData(false);
+
+                break;
+        }
+    }
+
+    private String getAnnotationValue() {
+        if (convertType == ConvertLibrary.OTHER) {
+            return annotationFT.getText().trim();
+        }
+        return ConvertLibrary.getAnnotation(convertType);
+    }
+
+    private void convertTypeListener() {
+        noneJRB.addActionListener(e -> {
+            convertType = ConvertLibrary.NONE;
+            annotationFT.setText(getAnnotationValue());
             annotationFT.setEnabled(false);
-        } else if (annotaionStr.equals(Constant.fastAnnotation)) {
-            fastJsonRB.setSelected(true);
+            enableFromData(false);
+            enableFromDataButton(false);
+            selectFromData(false);
+        });
+        jackRB.addActionListener(actionEvent -> {
+            convertType = ConvertLibrary.JACKSON;
+            annotationFT.setText(getAnnotationValue());
             annotationFT.setEnabled(false);
-        } else if (annotaionStr.equals(Constant.jackAnnotation)) {
-            jackRB.setSelected(true);
+            enableFromData(false);
+            selectFromData(false);
+        });
+        gsonJRB.addActionListener(actionEvent -> {
+            convertType = ConvertLibrary.GSON;
+            annotationFT.setText(getAnnotationValue());
             annotationFT.setEnabled(false);
-        } else if (annotaionStr.equals(Constant.loganSquareAnnotation)) {
-            loganSquareCB.setSelected(true);
+            enableFromData(true);
+            selectFromData(false);
+        });
+        fastJsonRB.addActionListener(actionEvent -> {
+            convertType = ConvertLibrary.FAST_JSON;
+            annotationFT.setText(getAnnotationValue());
             annotationFT.setEnabled(false);
-        } else if (annotaionStr.equals(Constant.autoValueAnnotation)) {
-            autoValueRadioButton.setSelected(true);
+            enableFromData(false);
+            selectFromData(false);
+        });
+        loganSquareCB.addActionListener(actionEvent -> {
+            convertType = ConvertLibrary.LOGAN_SQUARE;
+            annotationFT.setText(getAnnotationValue());
+            annotationFT.setEnabled(otherRB.isSelected());
+            enableFromData(false);
+            selectFromData(false);
+        });
+        autoValueRadioButton.addActionListener(e -> {
+            convertType = ConvertLibrary.AUTO_VALUE;
+            annotationFT.setText(getAnnotationValue());
             annotationFT.setEnabled(false);
-        } else {
-            otherRB.setSelected(true);
+            enableFromData(false);
+            selectFromData(false);
+        });
+        otherRB.addActionListener(actionEvent -> {
+            convertType = ConvertLibrary.OTHER;
+            annotationFT.setText(getAnnotationValue());
             annotationFT.setEnabled(true);
-        }
-        annotationFT.setText(annotaionStr);
+            enableFromData(false);
+            selectFromData(false);
+        });
+    }
+
+    private void fromDataButtonListener() {
+
         objectButton.addActionListener(new ActionListener() {
             @Override
             public void actionPerformed(ActionEvent actionEvent) {
@@ -307,25 +276,64 @@ public class SettingDialog extends JFrame {
         });
     }
 
+    private void formDataListener() {
+        objectFromDataCB.addActionListener(actionEvent -> objectButton.setEnabled(objectFromDataCB.isSelected()));
+        objectFromData1CB.addActionListener(actionEvent -> object1Button.setEnabled(objectFromData1CB.isSelected()));
+        arrayFromDataCB.addActionListener(actionEvent -> arrayButton.setEnabled(arrayFromDataCB.isSelected()));
+        arrayFromData1CB.addActionListener(actionEvent -> array1Button.setEnabled(arrayFromData1CB.isSelected()));
+    }
 
-    private void onOK() {
 
-        Config.getInstant().setFieldPrivateMode(fieldPrivateRadioButton.isSelected());
-        Config.getInstant().setUseSerializedName(useSerializedNameCheckBox.isSelected());
-        Config.getInstant().setArrayFromData(arrayFromDataCB.isSelected());
-        Config.getInstant().setArrayFromData1(arrayFromData1CB.isSelected());
-        Config.getInstant().setObjectFromData(objectFromDataCB.isSelected());
-        Config.getInstant().setObjectFromData1(objectFromData1CB.isSelected());
-        Config.getInstant().setReuseEntity(reuseEntityCB.isSelected());
-        Config.getInstant().setSuffixStr(suffixEdit.getText());
-        Config.getInstant().setVirgoMode(virgoModelCB.isSelected());
-        Config.getInstant().setGenerateComments(generateCommentsCT.isSelected());
-        Config.getInstant().setFiledNamePreFixStr(filedPrefixTF.getText());
-        Config.getInstant().setAnnotationStr(annotationFT.getText());
-        Config.getInstant().setUseFieldNamePrefix(filedPrefixCB.isSelected());
-        Config.getInstant().setSplitGenerate(splitGenerateMode.isSelected());
-        Config.getInstant().setUseWrapperClass(useWrapperClassCB.isSelected());
-        Config.getInstant().save();
+    private void enableFromData(boolean enable) {
+        objectFromDataCB.setEnabled(enable);
+        objectFromData1CB.setEnabled(enable);
+        arrayFromDataCB.setEnabled(enable);
+        arrayFromData1CB.setEnabled(enable);
+
+    }
+
+    private void enableFromDataButton(boolean enable) {
+        objectButton.setEnabled(enable);
+        object1Button.setEnabled(enable);
+        arrayButton.setEnabled(enable);
+        array1Button.setEnabled(enable);
+    }
+
+    private void selectFromData(boolean select) {
+        objectFromDataCB.setSelected(select);
+        objectFromData1CB.setSelected(select);
+        arrayFromDataCB.setSelected(select);
+        arrayFromData1CB.setSelected(select);
+    }
+
+    private void onOk() {
+        ProjectConfig projectConfig = ProjectConfig.getConfig(project);
+
+        projectConfig.setObjectFromData(objectFromDataCB.isSelected());
+        projectConfig.setObjectFromData1(objectFromData1CB.isSelected());
+        projectConfig.setArrayFromData(arrayFromDataCB.isSelected());
+        projectConfig.setArrayFromData1(arrayFromData1CB.isSelected());
+
+        projectConfig.setVirgoMode(virgoModelCB.isSelected());
+        projectConfig.setGenerateComments(generateCommentsCT.isSelected());
+        projectConfig.setSplitGenerate(splitGenerateMode.isSelected());
+        projectConfig.setReuseEntity(reuseEntityCB.isSelected());
+        projectConfig.setFieldPrivateMode(fieldPrivateRadioButton.isSelected());
+        projectConfig.setUseSerializedName(useSerializedNameCheckBox.isSelected());
+        projectConfig.setUseWrapperClass(useWrapperClassCB.isSelected());
+        projectConfig.setUseSetAndGet(useSetAndGetCB.isSelected());
+        projectConfig.setUseLombok(useLombokCB.isSelected());
+
+        projectConfig.setEntitySuffix(suffixEdit.getText().trim());
+        projectConfig.setFiledNamePrefix(filedPrefixTF.getText().trim());
+        projectConfig.setConvertType(convertType.name());
+
+        if (otherRB.isSelected()) {
+            String text = annotationFT.getText().trim();
+            projectConfig.setConvertOtherAnnotation(text);
+        }
+
+        projectConfig.save();
 
         dispose();
 

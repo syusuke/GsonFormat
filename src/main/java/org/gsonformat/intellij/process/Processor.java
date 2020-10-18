@@ -1,7 +1,6 @@
 package org.gsonformat.intellij.process;
 
-import com.intellij.psi.PsiClass;
-import com.intellij.psi.PsiElementFactory;
+import com.intellij.psi.*;
 import com.intellij.psi.codeStyle.JavaCodeStyleManager;
 import org.apache.http.util.TextUtils;
 import org.gsonformat.intellij.common.FieldHelper;
@@ -9,11 +8,12 @@ import org.gsonformat.intellij.common.PsiClassUtil;
 import org.gsonformat.intellij.common.Try;
 import org.gsonformat.intellij.config.Config;
 import org.gsonformat.intellij.config.Constant;
+import org.gsonformat.intellij.config.ProjectConfig;
 import org.gsonformat.intellij.entity.ClassEntity;
-import org.gsonformat.intellij.entity.ConvertLibrary;
 import org.gsonformat.intellij.entity.FieldEntity;
+import org.jetbrains.annotations.NotNull;
 
-import java.util.HashMap;
+import java.util.regex.Pattern;
 
 import static org.gsonformat.intellij.common.StringUtils.captureName;
 
@@ -22,26 +22,13 @@ import static org.gsonformat.intellij.common.StringUtils.captureName;
  */
 public abstract class Processor {
 
-    private static HashMap<ConvertLibrary, Processor> sProcessorMap = new HashMap<>();
+    public static final String CLASS_NAME_VAR = "$ClassName$";
 
-    static {
-        sProcessorMap.put(ConvertLibrary.Gson, new GsonProcessor());
-        sProcessorMap.put(ConvertLibrary.Jack, new JackProcessor());
-        sProcessorMap.put(ConvertLibrary.FastJson, new FastJsonProcessor());
-        sProcessorMap.put(ConvertLibrary.AutoValue, new AutoValueProcessor());
-        sProcessorMap.put(ConvertLibrary.LoganSquare, new LoganSquareProcessor());
-        sProcessorMap.put(ConvertLibrary.Other, new OtherProcessor());
-        sProcessorMap.put(ConvertLibrary.Lombok, new LombokProcessor());
-    }
-
-
-    static Processor getProcessor(ConvertLibrary convertLibrary) {
-        return sProcessorMap.get(convertLibrary);
-    }
-
+    protected ProjectConfig config;
     protected String mainPackage;
 
-    public void process(ClassEntity classEntity, PsiElementFactory factory, PsiClass cls, IProcessor visitor) {
+    public void process(ClassEntity classEntity, PsiElementFactory factory, PsiClass cls, IProcessor visitor, ProjectConfig projectConfig) {
+        this.config = projectConfig;
         mainPackage = PsiClassUtil.getPackage(cls);
         onStarProcess(classEntity, factory, cls, visitor);
 
@@ -51,12 +38,41 @@ public abstract class Processor {
         for (ClassEntity innerClass : classEntity.getInnerClasss()) {
             generateClass(factory, innerClass, cls, visitor);
         }
-        generateGetterAndSetter(factory, cls, classEntity);
+
+        if (this.config.isUseSetAndGet()) {
+            generateGetterAndSetter(factory, cls, classEntity);
+        }
+
         generateConvertMethod(factory, cls, classEntity);
         onEndProcess(classEntity, factory, cls, visitor);
     }
 
+    private static final Pattern NO_ARGS_CONSTRUCTOR = Pattern.compile("@.*?NoArgsConstructor");
+    private static final Pattern DATA_PATTERN = Pattern.compile("@.*?Data");
+
+    private void injectLombokAnnotation(PsiElementFactory factory, PsiClass generateClass) {
+        if (factory == null || generateClass == null) {
+            return;
+        }
+        PsiModifierList modifierList = generateClass.getModifierList();
+        if (modifierList != null) {
+            PsiElement firstChild = modifierList.getFirstChild();
+            if (firstChild != null && !NO_ARGS_CONSTRUCTOR.matcher(firstChild.getText()).find()) {
+                PsiAnnotation annotationFromText = factory.createAnnotationFromText("@lombok.NoArgsConstructor", generateClass);
+                modifierList.addBefore(annotationFromText, firstChild);
+            }
+            if (firstChild != null && !DATA_PATTERN.matcher(firstChild.getText()).find()) {
+                PsiAnnotation annotationFromText = factory.createAnnotationFromText("@lombok.Data", generateClass);
+                modifierList.addBefore(annotationFromText, firstChild);
+            }
+        }
+    }
+
+
     protected void onEndProcess(ClassEntity classEntity, PsiElementFactory factory, PsiClass cls, IProcessor visitor) {
+        if (config.isUseLombok()) {
+            injectLombokAnnotation(factory, cls);
+        }
         if (visitor != null) {
             visitor.onEndProcess(classEntity, factory, cls);
         }
@@ -79,26 +95,11 @@ public abstract class Processor {
     }
 
     protected void generateConvertMethod(PsiElementFactory factory, PsiClass cls, ClassEntity classEntity) {
-        if (cls == null || cls.getName() == null) {
-            return;
-        }
-        if (Config.getInstant().isObjectFromData()) {
-            createMethod(factory, Config.getInstant().getObjectFromDataStr().replace("$ClassName$", cls.getName()).trim(), cls);
-        }
-        if (Config.getInstant().isObjectFromData1()) {
-            createMethod(factory, Config.getInstant().getObjectFromDataStr1().replace("$ClassName$", cls.getName()).trim(), cls);
-        }
-        if (Config.getInstant().isArrayFromData()) {
-            createMethod(factory, Config.getInstant().getArrayFromDataStr().replace("$ClassName$", cls.getName()).trim(), cls);
-        }
-        if (Config.getInstant().isArrayFromData1()) {
-            createMethod(factory, Config.getInstant().getArrayFromData1Str().replace("$ClassName$", cls.getName()).trim(), cls);
-        }
+
     }
 
     protected void generateGetterAndSetter(PsiElementFactory factory, PsiClass cls, ClassEntity classEntity) {
-
-        if (Config.getInstant().isFieldPrivateMode()) {
+        if (config.isFieldPrivateMode()) {
             for (FieldEntity field : classEntity.getFields()) {
                 createGetAndSetMethod(factory, cls, field);
             }
@@ -124,17 +125,18 @@ public abstract class Processor {
         });
     }
 
+
     protected void createGetAndSetMethod(PsiElementFactory factory, PsiClass cls, FieldEntity field) {
         if (field.isGenerate()) {
             String fieldName = field.getGenerateFieldName();
             String typeStr = field.getRealType();
-            if (Config.getInstant().isUseFieldNamePrefix()) {
-                String temp = fieldName.replaceAll("^" + Config.getInstant().getFiledNamePreFixStr(), "");
+            if (!TextUtils.isEmpty(config.getFiledNamePrefix())) {
+                String temp = fieldName.replaceAll("^" + config.getFiledNamePrefix(), "");
                 if (!TextUtils.isEmpty(temp)) {
                     fieldName = temp;
                 }
             }
-            if (typeStr.equals("boolean") || typeStr.equals("Boolean")) {
+            if ("boolean".equals(typeStr) || "Boolean".equals(typeStr)) {
                 String method = "public ".concat(typeStr).concat("   is").concat(
                         captureName(fieldName)).concat("() {   return ").concat(
                         field.getGenerateFieldName()).concat(" ;} ");
@@ -148,8 +150,8 @@ public abstract class Processor {
             }
 
             String arg = fieldName;
-            if (Config.getInstant().isUseFieldNamePrefix()) {
-                String temp = fieldName.replaceAll("^" + Config.getInstant().getFiledNamePreFixStr(), "");
+            if (!TextUtils.isEmpty(config.getFiledNamePrefix())) {
+                String temp = fieldName.replaceAll("^" + config.getFiledNamePrefix(), "");
                 if (!TextUtils.isEmpty(temp)) {
                     fieldName = temp;
                     arg = fieldName;
@@ -199,16 +201,14 @@ public abstract class Processor {
         PsiClass generateClass = null;
         if (classEntity.isGenerate()) {
             //// TODO: 16/11/9  待重构 
-            if (Config.getInstant().isSplitGenerate()) {
+            if (config.isSplitGenerate()) {
                 try {
-                    generateClass = PsiClassUtil.getPsiClass(
-                            parentClass.getContainingFile(), parentClass.getProject(), classEntity.getQualifiedName());
+                    generateClass = PsiClassUtil.getPsiClass(parentClass.getContainingFile(), parentClass.getProject(), classEntity.getQualifiedName());
                 } catch (Throwable throwable) {
                     throwable.printStackTrace();
                 }
             } else {
-                String classContent =
-                        "public static class " + classEntity.getClassName() + "{}";
+                String classContent = "public static class " + classEntity.getClassName() + "{}";
                 generateClass = factory.createClassFromText(classContent, null).getInnerClasses()[0];
             }
 
@@ -217,18 +217,20 @@ public abstract class Processor {
                 for (ClassEntity innerClass : classEntity.getInnerClasss()) {
                     generateClass(factory, innerClass, generateClass, visitor);
                 }
-                if (!Config.getInstant().isSplitGenerate()) {
+                if (!config.isSplitGenerate()) {
                     generateClass = (PsiClass) parentClass.add(generateClass);
                 }
                 for (FieldEntity fieldEntity : classEntity.getFields()) {
                     generateField(factory, fieldEntity, generateClass, classEntity);
                 }
-                generateGetterAndSetter(factory, generateClass, classEntity);
+                if (config.isUseSetAndGet()) {
+                    generateGetterAndSetter(factory, generateClass, classEntity);
+                }
                 generateConvertMethod(factory, generateClass, classEntity);
             }
         }
         onEndGenerateClass(factory, classEntity, parentClass, generateClass, visitor);
-        if (Config.getInstant().isSplitGenerate()) {
+        if (config.isSplitGenerate()) {
             formatJavCode(generateClass);
         }
     }
@@ -271,6 +273,10 @@ public abstract class Processor {
 
     }
 
+    @NotNull
+    protected abstract String getFullNameAnnotation();
+
+
     private String generateFieldText(ClassEntity classEntity, FieldEntity fieldEntity, String fixme) {
         fixme = fixme == null ? "" : fixme;
         StringBuilder fieldSb = new StringBuilder();
@@ -282,15 +288,16 @@ public abstract class Processor {
         if (fieldEntity.getTargetClass() != null) {
             fieldEntity.getTargetClass().setGenerate(true);
         }
-        if (!filedName.equals(fieldEntity.getKey()) || Config.getInstant().isUseSerializedName()) {
-            fieldSb.append(Config.getInstant().geFullNameAnnotation().replaceAll("\\{filed\\}", fieldEntity.getKey()));
+        if (!filedName.equals(fieldEntity.getKey()) || config.isUseSerializedName()) {
+            fieldSb.append(getFullNameAnnotation().replaceAll("\\{filed}", fieldEntity.getKey()));
         }
 
-        if (Config.getInstant().isFieldPrivateMode()) {
+        if (config.isFieldPrivateMode()) {
             fieldSb.append("private  ").append(fieldEntity.getFullNameType()).append(" ").append(filedName).append(" ; ");
         } else {
             fieldSb.append("public  ").append(fieldEntity.getFullNameType()).append(" ").append(filedName).append(" ; ");
         }
         return fieldSb.append(fixme).toString();
     }
+
 }

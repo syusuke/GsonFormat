@@ -4,10 +4,10 @@ import com.intellij.psi.*;
 import org.apache.http.util.TextUtils;
 import org.gsonformat.intellij.common.FieldHelper;
 import org.gsonformat.intellij.common.Try;
-import org.gsonformat.intellij.config.Config;
 import org.gsonformat.intellij.config.Constant;
 import org.gsonformat.intellij.entity.ClassEntity;
 import org.gsonformat.intellij.entity.FieldEntity;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.regex.Pattern;
 
@@ -48,10 +48,17 @@ class AutoValueProcessor extends Processor {
         }
     }
 
+    @NotNull
+    @Override
+    protected String getFullNameAnnotation() {
+        return Constant.autoValueAnnotation;
+    }
+
     @Override
     public void generateGetterAndSetter(PsiElementFactory factory, PsiClass cls, ClassEntity classEntity) {
     }
 
+    /*
     @Override
     public void generateConvertMethod(PsiElementFactory factory, PsiClass cls, ClassEntity classEntity) {
         super.generateConvertMethod(factory, cls, classEntity);
@@ -61,6 +68,7 @@ class AutoValueProcessor extends Processor {
 //            createMethod(factory, Constant.autoValueMethodTemplate.replace("$className$", classEntity.getClassName()).replace("$AdapterClassName$", getAutoAdpaterClass(autoAdapter)).trim(), cls);
 //        }
     }
+     */
 
     public static String getAutoAdpaterClass(String className) {
         return String.join("_", className.split("\\."));
@@ -72,12 +80,13 @@ class AutoValueProcessor extends Processor {
         injectAutoAnnotation(factory, generateClass);
     }
 
+    private static final Pattern AUTO_VALUE_PATTERN = Pattern.compile("@.*?AutoValue");
+
     private void injectAutoAnnotation(PsiElementFactory factory, PsiClass cls) {
         PsiModifierList modifierList = cls.getModifierList();
         if (modifierList != null) {
             PsiElement firstChild = modifierList.getFirstChild();
-            Pattern pattern = Pattern.compile("@.*?AutoValue");
-            if (firstChild != null && !pattern.matcher(firstChild.getText()).find()) {
+            if (firstChild != null && !AUTO_VALUE_PATTERN.matcher(firstChild.getText()).find()) {
                 PsiAnnotation annotationFromText = factory.createAnnotationFromText("@com.google.auto.value.AutoValue", cls);
                 modifierList.addBefore(annotationFromText, firstChild);
             }
@@ -95,8 +104,8 @@ class AutoValueProcessor extends Processor {
             fieldSb.append(classEntity.getExtra()).append("\n");
             classEntity.setExtra(null);
         }
-        if (!fieldName.equals(fieldEntity.getKey()) || Config.getInstant().isUseSerializedName()) {
-            fieldSb.append(Constant.gsonFullNameAnnotation.replaceAll("\\{filed\\}", fieldEntity.getKey()));
+        if (!fieldName.equals(fieldEntity.getKey()) || config.isUseSerializedName()) {
+            fieldSb.append(Constant.gsonFullNameAnnotation.replaceAll("\\{filed}", fieldEntity.getKey()));
         }
         if (fieldEntity.getTargetClass() != null) {
             fieldEntity.getTargetClass().setGenerate(true);

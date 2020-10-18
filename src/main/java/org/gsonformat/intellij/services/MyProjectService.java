@@ -1,5 +1,6 @@
 package org.gsonformat.intellij.services;
 
+import com.intellij.openapi.components.State;
 import com.intellij.openapi.project.Project;
 
 /**

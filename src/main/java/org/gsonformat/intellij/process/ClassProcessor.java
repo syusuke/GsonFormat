@@ -2,6 +2,7 @@ package org.gsonformat.intellij.process;
 
 import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElementFactory;
+import org.gsonformat.intellij.config.ProjectConfig;
 import org.gsonformat.intellij.entity.ClassEntity;
 import org.gsonformat.intellij.entity.ConvertLibrary;
 
@@ -13,15 +14,19 @@ public class ClassProcessor {
 
     private PsiElementFactory factory;
     private PsiClass cls;
-    private Processor processor;
+    private ProjectConfig config;
 
-    public ClassProcessor(PsiElementFactory factory, PsiClass cls) {
+    public ClassProcessor(PsiElementFactory factory, PsiClass cls, ProjectConfig config) {
         this.factory = factory;
         this.cls = cls;
-        processor = Processor.getProcessor(ConvertLibrary.from());
+        this.config = config;
+
     }
 
     public void generate(ClassEntity classEntity, IProcessor visitor) {
-        if (processor != null) processor.process(classEntity, factory, cls, visitor);
+        Processor processor = ProcessorHelper.getProcessor(ConvertLibrary.fromName(config.getConvertType()));
+        if (processor != null) {
+            processor.process(classEntity, factory, cls, visitor, config);
+        }
     }
 }

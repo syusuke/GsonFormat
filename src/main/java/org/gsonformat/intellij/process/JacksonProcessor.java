@@ -1,14 +1,18 @@
 package org.gsonformat.intellij.process;
 
 import com.intellij.psi.*;
+import org.gsonformat.intellij.config.Constant;
 import org.gsonformat.intellij.entity.ClassEntity;
+import org.jetbrains.annotations.NotNull;
 
 import java.util.regex.Pattern;
 
 /**
  * Created by dim on 16/11/7.
  */
-class JackProcessor extends Processor {
+class JacksonProcessor extends Processor {
+
+    private static final Pattern PATTERN = Pattern.compile("@.*?JsonIgnoreProperties");
 
     @Override
     protected void onStartGenerateClass(PsiElementFactory factory, ClassEntity classEntity, PsiClass parentClass, IProcessor visitor) {
@@ -27,16 +31,23 @@ class JackProcessor extends Processor {
         injectAnnotation(factory, generateClass);
     }
 
+    @NotNull
+    @Override
+    protected String getFullNameAnnotation() {
+        return Constant.jackFullNameAnnotation;
+    }
+
     private void injectAnnotation(PsiElementFactory factory, PsiClass generateClass) {
         if (factory == null || generateClass == null) {
             return;
         }
         PsiModifierList modifierList = generateClass.getModifierList();
+        if (modifierList == null) {
+            return;
+        }
         PsiElement firstChild = modifierList.getFirstChild();
-        Pattern pattern = Pattern.compile("@.*?JsonIgnoreProperties");
-        if (firstChild != null && !pattern.matcher(firstChild.getText()).find()) {
-            PsiAnnotation annotationFromText =
-                    factory.createAnnotationFromText("@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)", generateClass);
+        if (firstChild != null && !PATTERN.matcher(firstChild.getText()).find()) {
+            PsiAnnotation annotationFromText = factory.createAnnotationFromText("@com.fasterxml.jackson.annotation.JsonIgnoreProperties(ignoreUnknown = true)", generateClass);
             modifierList.addBefore(annotationFromText, firstChild);
         }
     }

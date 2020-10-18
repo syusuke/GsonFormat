@@ -7,7 +7,7 @@ public class Constant {
 
 
     public static final String DEFAULT_PREFIX = "_$";
-    public static String FIXME="// FIXME check this code";
+    public static String FIXME = "// FIXME check this code";
 
 
     public static final String privateStr = "   private String name;\n" +
@@ -72,7 +72,7 @@ public class Constant {
             "            e.printStackTrace();\n" +
             "        }\n" +
             "\n" +
-            "        return new java.util.ArrayList();\n" +
+            "        return new java.util.ArrayList<>();\n" +
             "\n" +
             "\n" +
             "    }";
@@ -97,8 +97,10 @@ public class Constant {
     public static final String jackFullNameAnnotation = "@com.fasterxml.jackson.annotation.JsonProperty(\"{filed}\")";
 
     public static final String autoValueAnnotation = "autoValue";
-    public static final String lombokAnnotation = "lombok";
-
     public static final String loganSquareFullNameAnnotation = "@com.bluelinelabs.logansquare.annotation.JsonField(name=\"{filed}\")";
+
+
+    public static final String DEFAULT_OTHER_ANNOTATION = "@{filed}";
+
 
 }

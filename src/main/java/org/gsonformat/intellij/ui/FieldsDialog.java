@@ -7,10 +7,12 @@ import com.intellij.psi.PsiClass;
 import com.intellij.psi.PsiElementFactory;
 import com.intellij.psi.PsiFile;
 import org.gsonformat.intellij.ConvertBridge;
-import org.gsonformat.intellij.action.DataWriter;
+import org.gsonformat.intellij.action.DataWriteAction;
 import org.gsonformat.intellij.common.PsiClassUtil;
 import org.gsonformat.intellij.common.StringUtils;
 import org.gsonformat.intellij.config.Config;
+import org.gsonformat.intellij.config.EasyConfig;
+import org.gsonformat.intellij.config.ProjectConfig;
 import org.gsonformat.intellij.entity.ClassEntity;
 import org.gsonformat.intellij.entity.FieldEntity;
 import org.jdesktop.swingx.JXTreeTable;
@@ -147,14 +149,14 @@ public class FieldsDialog extends JFrame {
                 if (psiClass != null) {
                     String[] arg = generateClassStr.split("\\.");
                     if (arg.length > 1) {
-                        Config.getInstant().setEntityPackName(generateClassStr.substring(0, generateClassStr.length() - arg[arg.length - 1].length()));
+                        EasyConfig.saveCurrentEntityPackage(project, generateClassStr.substring(0, generateClassStr.length() - arg[arg.length - 1].length()));
                         Config.getInstant().save();
                     }
                     try {
                         setVisible(false);
-                        DataWriter dataWriter = new DataWriter(file, project, psiClass);
+                        DataWriteAction dataWriter = new DataWriteAction(file, project, psiClass);
                         dataWriter.execute(classEntity);
-                        Config.getInstant().saveCurrentPackPath(StringUtils.getPackage(generateClassStr));
+                        EasyConfig.saveCurrentEntityPackage(project, StringUtils.getPackage(generateClassStr));
                         operator.dispose();
                         dispose();
                     } catch (Exception e) {

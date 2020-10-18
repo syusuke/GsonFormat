@@ -6,16 +6,14 @@ import com.intellij.psi.*;
 import com.intellij.psi.impl.source.PsiClassReferenceType;
 import com.intellij.psi.util.PsiTypesUtil;
 import org.apache.http.util.TextUtils;
-import org.gsonformat.intellij.action.DataWriter;
+import org.gsonformat.intellij.action.DataWriteAction;
 import org.gsonformat.intellij.common.CheckUtil;
 import org.gsonformat.intellij.common.PsiClassUtil;
 import org.gsonformat.intellij.common.StringUtils;
 import org.gsonformat.intellij.common.Utils;
-import org.gsonformat.intellij.config.Config;
-import org.gsonformat.intellij.entity.ClassEntity;
-import org.gsonformat.intellij.entity.DataType;
-import org.gsonformat.intellij.entity.FieldEntity;
-import org.gsonformat.intellij.entity.IterableFieldEntity;
+import org.gsonformat.intellij.config.EasyConfig;
+import org.gsonformat.intellij.config.ProjectConfig;
+import org.gsonformat.intellij.entity.*;
 import org.gsonformat.intellij.ui.FieldsDialog;
 import org.json.JSONArray;
 import org.json.JSONObject;
@@ -39,10 +37,10 @@ public class ConvertBridge {
     private PsiClass currentClass;
     private PsiElementFactory factory;
     private Project project;
-    private PsiFile file;
+    private PsiFile currentEditPisFile;
     private String jsonStr;
-    private HashMap<String, FieldEntity> declareFields;
-    private HashMap<String, ClassEntity> declareClass;
+    private Map<String, FieldEntity> declareFields;
+    private Map<String, ClassEntity> declareClass;
     private String generateClassName;
     private ClassEntity generateClassEntity = new ClassEntity();
     private StringBuilder fullFilterRegex = null;
@@ -51,13 +49,16 @@ public class ConvertBridge {
     private Operator operator;
     private String packageName;
 
+
+    private static final Pattern W_PATTERN = Pattern.compile("\\w+");
+
     public ConvertBridge(Operator operator,
                          String jsonStr, PsiFile file, Project project,
                          PsiClass targetClass,
                          PsiClass currentClass, String generateClassName) {
 
         factory = JavaPsiFacade.getElementFactory(project);
-        this.file = file;
+        this.currentEditPisFile = file;
         this.generateClassName = generateClassName;
         this.operator = operator;
         this.jsonStr = jsonStr;
@@ -70,14 +71,21 @@ public class ConvertBridge {
         fullFilterRegex = new StringBuilder();
         briefFilterRegex = new StringBuilder();
         CheckUtil.getInstant().cleanDeclareData();
-        String[] arg = Config.getInstant().getAnnotationStr().replace("{filed}", "(\\w+)").split("\\.");
+
+        ConvertLibrary convertLibrary = ConvertLibrary.fromName(ProjectConfig.getConfig(project).getConvertType());
+
+        String annotation = ConvertLibrary.getAnnotation(convertLibrary);
+        if (convertLibrary == ConvertLibrary.OTHER) {
+            annotation = ProjectConfig.getConfig(project).getConvertOtherAnnotation();
+        }
+        String[] arg = annotation.replace("{filed}", "(\\w+)").split("\\.");
 
         for (int i = 0; i < arg.length; i++) {
             String s = arg[i];
             if (i == arg.length - 1) {
                 briefFilterRegex.append(s);
                 fullFilterRegex.append(s);
-                Matcher matcher = Pattern.compile("\\w+").matcher(s);
+                Matcher matcher = W_PATTERN.matcher(s);
                 if (matcher.find()) {
                     filterRegex = matcher.group();
                 }
@@ -93,7 +101,6 @@ public class ConvertBridge {
         JSONObject json = null;
         operator.cleanErrorInfo();
         try {
-
             json = parseJSONObject(jsonStr);
         } catch (Exception e) {
             String jsonTS = removeComment(jsonStr);
@@ -106,14 +113,14 @@ public class ConvertBridge {
         }
         if (json != null) {
             try {
-                ClassEntity classEntity = collectClassAttribute(targetClass, Config.getInstant().isReuseEntity());
+                ClassEntity classEntity = collectClassAttribute(targetClass, ProjectConfig.getConfig(project).isReuseEntity());
                 if (classEntity != null) {
                     for (FieldEntity item : classEntity.getFields()) {
                         declareFields.put(item.getKey(), item);
                         CheckUtil.getInstant().addDeclareFieldName(item.getKey());
                     }
                 }
-                if (Config.getInstant().isSplitGenerate()) {
+                if (ProjectConfig.getConfig(project).isSplitGenerate()) {
                     collectPackAllClassName();
                 }
                 operator.setVisible(false);
@@ -160,7 +167,7 @@ public class ConvertBridge {
     }
 
     private void collectPackAllClassName() {
-        File packageFile = PsiClassUtil.getPackageFile(file, packageName);
+        File packageFile = PsiClassUtil.getPackageFile(currentEditPisFile, packageName);
         if (packageFile != null) {
             File[] files = packageFile.listFiles();
             if (files != null) {
@@ -252,7 +259,7 @@ public class ConvertBridge {
 
     private List<FieldEntity> collectDeclareFields(PsiClass mClass) {
 
-        ArrayList<FieldEntity> filterFieldList = new ArrayList<>();
+        List<FieldEntity> filterFieldList = new ArrayList<>();
         if (mClass != null) {
             PsiField[] psiFields = mClass.getAllFields();
             for (PsiField psiField : psiFields) {
@@ -395,7 +402,7 @@ public class ConvertBridge {
 
     private void parseJson(JSONObject json) {
         List<String> generateFiled = collectGenerateFiled(json);
-        if (Config.getInstant().isVirgoMode()) {
+        if (ProjectConfig.getConfig(project).isVirgoMode()) {
             handleVirgoMode(json, generateFiled);
         } else {
             handleNormal(json, generateFiled);
@@ -407,7 +414,7 @@ public class ConvertBridge {
         generateClassEntity.setPsiClass(targetClass);
         generateClassEntity.addAllFields(createFields(json, fieldList, generateClassEntity));
         FieldsDialog fieldsDialog = new FieldsDialog(operator, generateClassEntity, factory,
-                targetClass, currentClass, file, project, generateClassName);
+                targetClass, currentClass, currentEditPisFile, project, generateClassName);
         fieldsDialog.setSize(800, 500);
         fieldsDialog.setLocationRelativeTo(null);
         fieldsDialog.setVisible(true);
@@ -419,23 +426,22 @@ public class ConvertBridge {
             public void run() {
                 if (targetClass == null) {
                     try {
-                        targetClass = PsiClassUtil.getPsiClass(file, project, generateClassName);
+                        targetClass = PsiClassUtil.getPsiClass(currentEditPisFile, project, generateClassName);
                     } catch (Throwable throwable) {
                         handlePathError(throwable);
                     }
                 }
                 if (targetClass != null) {
                     generateClassEntity.setPsiClass(targetClass);
-                    try {
-                        generateClassEntity.addAllFields(createFields(json, generateFiled, generateClassEntity));
-                        operator.setVisible(false);
-                        DataWriter dataWriter = new DataWriter(file, project, targetClass);
-                        dataWriter.execute(generateClassEntity);
-                        Config.getInstant().saveCurrentPackPath(packageName);
-                        operator.dispose();
-                    } catch (Exception e) {
-                        throw e;
-                    }
+                    generateClassEntity.addAllFields(createFields(json, generateFiled, generateClassEntity));
+                    operator.setVisible(false);
+
+                    DataWriteAction dataWriter = new DataWriteAction(currentEditPisFile, project, targetClass);
+                    dataWriter.execute(generateClassEntity);
+
+                    EasyConfig.saveCurrentEntityPackage(project, packageName);
+
+                    operator.dispose();
                 }
             }
         });
@@ -443,7 +449,7 @@ public class ConvertBridge {
 
     private List<String> collectGenerateFiled(JSONObject json) {
         Set<String> keySet = json.keySet();
-        List<String> fieldList = new ArrayList<String>();
+        List<String> fieldList = new ArrayList<>();
         for (String key : keySet) {
             if (!existDeclareField(key, json)) {
                 fieldList.add(key);
@@ -473,9 +479,9 @@ public class ConvertBridge {
 
     private List<FieldEntity> createFields(JSONObject json, List<String> fieldList, ClassEntity parentClass) {
 
-        List<FieldEntity> fieldEntityList = new ArrayList<FieldEntity>();
-        List<String> listEntityList = new ArrayList<String>();
-        boolean writeExtra = Config.getInstant().isGenerateComments();
+        List<FieldEntity> fieldEntityList = new ArrayList<>();
+        List<String> listEntityList = new ArrayList<>();
+        boolean writeExtra = ProjectConfig.getConfig(project).isGenerateComments();
 
         for (int i = 0; i < fieldList.size(); i++) {
             String key = fieldList.get(i);
@@ -492,8 +498,7 @@ public class ConvertBridge {
             }
         }
 
-        for (int i = 0; i < listEntityList.size(); i++) {
-            String key = listEntityList.get(i);
+        for (String key : listEntityList) {
             Object type = json.get(key);
             FieldEntity fieldEntity = createField(parentClass, key, type);
             fieldEntityList.add(fieldEntity);
@@ -506,7 +511,7 @@ public class ConvertBridge {
     private FieldEntity createField(ClassEntity parentClass, String key, Object type) {
         //过滤 不符合规则的key
         String fieldName = CheckUtil.getInstant().handleArg(key);
-        if (Config.getInstant().isUseSerializedName()) {
+        if (ProjectConfig.getConfig(project).isUseSerializedName()) {
             fieldName = StringUtils.captureStringLeaveUnderscore(convertSerializedName(fieldName));
         }
         fieldName = handleDeclareFieldName(fieldName, "");
@@ -517,9 +522,9 @@ public class ConvertBridge {
     }
 
     private String convertSerializedName(String fieldName) {
-        if (Config.getInstant().isUseFieldNamePrefix() &&
-                !TextUtils.isEmpty(Config.getInstant().getFiledNamePreFixStr())) {
-            fieldName = Config.getInstant().getFiledNamePreFixStr() + "_" + fieldName;
+        String filedNamePrefix = ProjectConfig.getConfig(project).getFiledNamePrefix();
+        if (!TextUtils.isEmpty(filedNamePrefix)) {
+            fieldName = filedNamePrefix + "_" + fieldName;
         }
         return fieldName;
     }
@@ -528,25 +533,22 @@ public class ConvertBridge {
         FieldEntity result;
         if (type instanceof JSONObject) {
             ClassEntity classEntity = existDeclareClass((JSONObject) type);
+            FieldEntity fieldEntity = new FieldEntity();
+            fieldEntity.setKey(key);
             if (classEntity == null) {
-                FieldEntity fieldEntity = new FieldEntity();
                 ClassEntity innerClassEntity = createInnerClass(createSubClassName(key, type), (JSONObject) type, parentClass);
-                fieldEntity.setKey(key);
                 fieldEntity.setTargetClass(innerClassEntity);
-                result = fieldEntity;
             } else {
-                FieldEntity fieldEntity = new FieldEntity();
-                fieldEntity.setKey(key);
                 fieldEntity.setTargetClass(classEntity);
-                result = fieldEntity;
             }
+            result = fieldEntity;
         } else if (type instanceof JSONArray) {
             result = handleJSONArray(parentClass, (JSONArray) type, key, 1);
         } else {
             FieldEntity fieldEntity = new FieldEntity();
             fieldEntity.setKey(key);
             String vType;
-            if (Config.getInstant().isUseWrapperClass()) {
+            if (ProjectConfig.getConfig(project).isUseWrapperClass()) {
                 vType = PsiTypesUtil.boxIfPossible(DataType.getWrapperTypeSimpleName(DataType.typeOfObject(type)));
             } else {
                 vType = DataType.typeOfObject(type).getValue();
@@ -594,11 +596,11 @@ public class ConvertBridge {
      */
     private ClassEntity createInnerClass(String className, JSONObject json, ClassEntity parentClass) {
 
-        if (Config.getInstant().isSplitGenerate()) {
+        if (ProjectConfig.getConfig(project).isSplitGenerate()) {
             String qualifiedName = packageName == null ? className : packageName + "." + className;
             if (CheckUtil.getInstant().containsDeclareClassName(qualifiedName)) {
                 //存在同名。
-                PsiClass psiClass = PsiClassUtil.exist(file, qualifiedName);
+                PsiClass psiClass = PsiClassUtil.exist(currentEditPisFile, qualifiedName);
                 if (psiClass != null) {
                     ClassEntity classEntity = collectClassAttribute(psiClass, false);
                     classEntity.setLock(true);
@@ -618,7 +620,7 @@ public class ConvertBridge {
         List<String> list = new ArrayList<String>(set);
         List<FieldEntity> fields = createFields(json, list, subClassEntity);
         subClassEntity.addAllFields(fields);
-        if (Config.getInstant().isSplitGenerate()) {
+        if (ProjectConfig.getConfig(project).isSplitGenerate()) {
             subClassEntity.setPackName(packageName);
         } else {
             subClassEntity.setPackName(parentClass.getQualifiedName());
@@ -627,7 +629,7 @@ public class ConvertBridge {
         if (handleDeclareClassName(subClassEntity, "")) {
             CheckUtil.getInstant().addDeclareClassName(subClassEntity.getQualifiedName());
         }
-        if (Config.getInstant().isReuseEntity()) {
+        if (ProjectConfig.getConfig(project).isReuseEntity()) {
             declareClass.put(subClassEntity.getQualifiedName(), subClassEntity);
         }
         parentClass.addInnerClass(subClassEntity);
@@ -653,17 +655,22 @@ public class ConvertBridge {
     }
 
     private String createSubClassName(String key, Object o) {
-        String name = "";
+        String name = null;
         if (o instanceof JSONObject) {
             if (TextUtils.isEmpty(key)) {
                 return key;
             }
             String[] strings = key.split("_");
             StringBuilder stringBuilder = new StringBuilder();
-            for (int i = 0; i < strings.length; i++) {
-                stringBuilder.append(StringUtils.captureName(strings[i]));
+            for (String string : strings) {
+                stringBuilder.append(StringUtils.captureName(string));
             }
-            name = stringBuilder.toString() + Config.getInstant().getSuffixStr();
+            String entitySuffix = ProjectConfig.getConfig(project).getEntitySuffix();
+            if (!TextUtils.isEmpty(entitySuffix)) {
+                name = stringBuilder.append(entitySuffix).toString();
+            } else {
+                name = stringBuilder.toString();
+            }
         }
         return name;
 
