@@ -12,6 +12,6 @@ deploy:
     secure: Bq9NTUjFsgYtGyW7ho5J7N7Ib/FCPYn1bSC5NpuGeyHA1QOan8cWv03crBogVck55h5fFa9jGUZuo+wwtALtemXBcCTavtR4eLIAD/vHFln8jZbxLTMwYzVKu0EwIz35mycVKJvJZGKqPVDxAHieY2GcvhyHu6Wnj4b1rxTQ9JQYtEru9WFD7TwLF8TvtHc96VBtky6fuoug7PtY1WPKeOyp1DvX20XQKyv0j00WVXhfGwOWJ2kfNlXoGVdfZgcNlIReDlOa80qaWZTvWlAkM4HV7fqv7wZ6WSldgYWHDzz8t74dBQa6OzGhFqXzuVytjbXINxj5mDynnBJXgJAPPAKle8TmAcWyDKK2cyoTD4cEfrLCWLN8W5MGQvtHO85dKKHHyL24ye8EYrledrkabIbXdBQWSTs5b+Qj+jNeB7iPeXn1IQ7V+9iiim2aNYBwWg5Sl+TwYGxDcYU1lqm59xg45YpUT0OQBEcP9P/RxnbpFooSyOVM+ZvkVW2VmKvcjvQhX5r/yEohpkRcp9IXKeL3v0EEXaX1lApsXqNPGRL6JN/hj1mwlQVhnaYFT27ZVLf9HBl52jQ2idJgm1dtIqUn+Ce9FDl9kCOAd99d2kmje1PJqDTzkbtLV0+9eiwkrUeeXS5wYX57Qs1RGafhyzDIaH8CugN6Jzln4tqi7wY=
   file: 'build/libs/GsonFormat.jar'
   on:
-    # repo: syusuke/GsonFormat
+    repo: syusuke/GsonFormat
     tags: true
   skip_cleanup: 'true'
