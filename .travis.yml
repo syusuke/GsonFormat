@@ -4,14 +4,8 @@ install: skip
 os: linux
 
 jdk:
-  - openjdk-ea
-  - openjdk14
   - openjdk11
   - openjdk8
-
-matrix:
-  allow_failures:
-    - jdk: openjdk-ea
 
 script:
   - ./gradlew clean buildPlugin
