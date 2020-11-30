@@ -24,7 +24,7 @@ sourceSets {
     }
 }
 intellij {
-    version 'IC-2020.2.3'
+    version 'IC-2020.2.4'
     pluginName 'GsonFormat'
     updateSinceUntilBuild false
     plugins = ['java']
